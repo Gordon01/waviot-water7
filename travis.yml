@@ -1,0 +1,10 @@
+language: cpp
+compiler: gcc
+
+os:
+  - windows
+  - linux
+
+compiler:
+  - gcc
+  - clang
