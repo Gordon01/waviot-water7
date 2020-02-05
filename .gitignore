@@ -18,3 +18,6 @@ autom4te.cache
 /stamp-h1
 /config.h.in~
 config.h
+main.o
+water7_lib
+lib/WVT_Water7.o
