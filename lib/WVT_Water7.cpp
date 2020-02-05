@@ -1,58 +1,47 @@
-﻿#include <stm32l0xx_hal.h>
-#include <map>
+﻿#include "WVT_Water7.h"
 
-#include "nbfi.h"
-#include "nbfi_defines.h"
+WVT_W7_Callbacks_t externals_functions = { 0 };
 
-#include "WVT_Radio.h"
-#include "WVT_Water7.h"
-#include "WVT_EEPROM.h"
-#include "WVT_ADC.h"
-#include "WVT_Hall.h"
-
-extern nbfi_state_t nbfi_state;
-uint8_t wvt_w7_can_sleep = 1;
-
-HAL_StatusTypeDef WVT_W7_Single_Parameter(WVT_W7_Single_Parameter_t parameter, 
+WVT_W7_Error_t WVT_W7_Single_Parameter(
+	uint16_t parameter_addres,
 	WVT_W7_Parameter_Action_t action,
-	uint8_t * responce_buffer, 
-	uint8_t * responce_length);
-uint8_t WVT_W7_Value_Event(WVT_W7_Switch_Event_t event, uint32_t current, uint8_t * responce_buffer);
+	uint8_t * responce_buffer);
 uint8_t WVT_W7_Send_Normal_Regular(uint8_t * responce_buffer);
 uint16_t WVT_W7_Get_Current_Reading(void);
 void WVT_W7_Additional_Parameter(uint16_t address, uint8_t * data);
 
-std::map<WVT_W7_Packet_t, uint8_t> wvt_packet_lengths = { 
-	{ WVT_W7_PACKET_TYPE_READ_SINGLE, 3 },
-	{ WVT_W7_PACKET_TYPE_WRITE_SINGLE, 7 },
-};
-
-void WVT_W7_Init()
+/**
+ * @brief	Отправляет стартовый пакет, указывающий на начало работы устройства
+ *			после включения питания или перезагрузки
+ *
+ * @param [in] 	resets		   	Число перезагрузок устройства
+ */
+void WVT_W7_Start(int32_t resets)
 {
 	uint8_t output_buffer[8];
 	uint8_t output_length;
 	
-	int32_t resets;
-	WVT_ROM_Read_Parameter(WVT_W7_IN_CMD_RESETS_NUMBER, &resets);
-	
 	output_length = WVT_W7_Uplink_Event(WVT_W7_EVENT_RESET, resets, output_buffer);
-	NBFi_Send(output_buffer, output_length);
+	externals_functions.nbfi_send(output_buffer, output_length);
 }
 
-uint8_t WVT_W7_Can_Sleep(void)
-{
-	return wvt_w7_can_sleep;
-}
-
+/**
+ * @brief	Обрабатывает входящий пакет и отсылает ответ в случае необходимости
+ *			Должна вызываться при приеме downlink-пакета. 
+ *						
+ *
+ * @param [in] 	data		   	Указатель на буфер с выходными данными.
+ * @param 	   	length		   	Чило байт во входном буфере.
+ */
 void WVT_Radio_Callback(uint8_t * data, uint16_t length)
 {
-	uint8_t responce_buffer[16];
+	uint8_t responce_buffer[WVT_W7_CALLBACK_BUF_SIZE];
 	
 	uint8_t responce_length = WVT_W7_Parse(data, length, responce_buffer);
 	
 	if (responce_length)
 	{
-		NBFi_Send(responce_buffer, responce_length);
+		externals_functions.nbfi_send(responce_buffer, responce_length);
 	}
 }
 
@@ -67,48 +56,226 @@ void WVT_Radio_Callback(uint8_t * data, uint16_t length)
  */
 inline uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
 {
-	WVT_W7_Packet_t packet_type = (WVT_W7_Packet_t) data[0];
-	WVT_W7_Single_Parameter_t parameter;
-	HAL_StatusTypeDef return_code;
+	WVT_W7_Error_t return_code;
 	uint8_t responce_length;
+	uint32_t addres;
+	uint32_t number_of_parameters;
 	
-	if (	(wvt_packet_lengths.find(packet_type) != wvt_packet_lengths.end())
-		&&	(wvt_packet_lengths[packet_type] == length) )
+	// Должны быть переданы верные указатели на данные
+	if ((data && length && responce_buffer) == 0)
 	{
-		// У пакета верная длинна
-		switch (packet_type)
+		return 0;	
+	}
+	
+	WVT_W7_Packet_t packet_type = (WVT_W7_Packet_t) data[0];
+	
+	switch (packet_type)
+	{
+	case WVT_W7_PACKET_TYPE_READ_MULTIPLE:
+		addres = (data[1] << 8) + data[2];
+		number_of_parameters = (data[3] << 8) + data[4];
+		
+		if (	(length == 5)
+			&&  ((5 + (number_of_parameters * 4)) <= WVT_W7_CALLBACK_BUF_SIZE) 
+			&&	((addres + number_of_parameters) <= WVT_W7_PAR_LENGTH)	)
 		{
-		case WVT_W7_PACKET_TYPE_WRITE_SINGLE:
-			parameter.address = (data[1] << 8) + data[2];
-			parameter.value = (data[3] << 24) + (data[4] << 16) + (data[5] << 8) + (data[6]);
-			return_code = WVT_W7_Single_Parameter(parameter,
-				WVT_W7_PARAMETER_WRITE,
-				responce_buffer,
-				&responce_length);
+			// Тип сообщения, адрес начала последовательности, длинна последовательности
+			for (uint8_t i = 0; i < 5; i++)
+			{
+				responce_buffer[i] = data[i];
+			}
+			
+			
+			return_code = WVT_W7_Single_Parameter(data, WVT_W7_PARAMETER_READ, responce_buffer, &responce_length);
+		}
+		else
+		{
+			return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+		}
+		
+		if ((length == 5) && ((5 + len * 4) <= WATER7_CALLBACK_BUF_SIZE) && (addr + len <= WATER7_PAR_LENGTH))
+		{
+			for (uint8_t i = 0; i < 5; i++)
+				tmpbuf[i] = data[i];
+			for (uint8_t i = 0; i < len; i++)
+				bigendian_cpy((uint8_t *)&_state.parameters_array[addr + i], (uint8_t *)&tmpbuf[5 + i * 4], 4);
+			NBFi_Send(tmpbuf, 5 + len * 4);
+		}
+
+		break;
+	case WVT_W7_PACKET_TYPE_WRITE_MULTIPLE:
+		bigendian_cpy((uint8_t *)&data[1], (uint8_t *)&addr, 2);
+		bigendian_cpy((uint8_t *)&data[3], (uint8_t *)&len, 2);
+		if ((length == (len * 4 + 5)) && (addr + len <= WATER7_PAR_LENGTH))
+		{
+			for (uint8_t i = 0; i < len; i++)
+				bigendian_cpy((uint8_t *)&data[5 + i * 4], (uint8_t *)&_state.parameters_array[addr + i], 4);
+			for (uint8_t i = 0; i < 5; i++)
+				tmpbuf[i] = data[i];
+			NBFi_Send(tmpbuf, 5);
+		}
+		else
+		{
+			tmpbuf[0] = data[0] | CMD_ERR;
+			tmpbuf[1] = 0x02;
+			NBFi_Send(tmpbuf, 2);
+		}
+		break;
+	case WVT_W7_PACKET_TYPE_READ_SINGLE:
+		addres = (data[1] << 8) + data[2];
+		if ((length == 3) && (addres < WVT_W7_PAR_LENGTH))
+		{
+			return_code = WVT_W7_Single_Parameter(data, WVT_W7_PARAMETER_READ, responce_buffer, &responce_length);
+		}
+		else
+		{
+			return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+		}
+		break;
+	case WVT_W7_PACKET_TYPE_WRITE_SINGLE:
+		addres = (data[1] << 8) + data[2];
+		if ((length == 7) && (addres < WVT_W7_PAR_LENGTH))
+		{
+			return_code = WVT_W7_Single_Parameter(data, WVT_W7_PARAMETER_WRITE, responce_buffer, &responce_length);
+		}
+		else
+		{
+			return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+		}
+		break;
+	case WVT_W7_PACKET_TYPE_FW_UPDATE:
+		if (length < 2)
 			break;
-		case WVT_W7_PACKET_TYPE_READ_SINGLE:
-			parameter.address = (data[1] << 8) + data[2];
-			//parameter.value = (data[3] << 24) + (data[4] << 16) + (data[5] << 8) + (data[6]);
-			return_code = WVT_W7_Single_Parameter(parameter,
-				WVT_W7_PARAMETER_READ,
-				responce_buffer,
-				&responce_length);
+		NBFi_Switch_Mode(CRX);
+		ScheduleTask(&water7crx_off_desc, &Water7crx_off, RELATIVE, SECONDS(WATER7_CRX_TIMEOUT));
+		switch (data[1])
+		{
+		case RFL_CMD_WRITE_HEX:
+			bigendian_cpy((uint8_t *)&data[2], (uint8_t *)&addr32, 4);
+			bigendian_cpy((uint8_t *)&data[6], (uint8_t *)&len, 2);
+			if (_rfl)
+				_rfl(addr32, len, 0, &data[8], data[1]);
+			for (uint8_t i = 0; i < 8; i++)
+				tmpbuf[i] = data[i];
+			NBFi_Send(tmpbuf, 8);
 			break;
+		case RFL_CMD_READ_HEX:
+			bigendian_cpy((uint8_t *)&data[2], (uint8_t *)&addr32, 4);
+			bigendian_cpy((uint8_t *)&data[6], (uint8_t *)&len, 2);
+			if (len > WATER7_CALLBACK_BUF_SIZE - 8)
+			{
+				tmpbuf[0] = data[0] | CMD_ERR;
+				tmpbuf[1] = 0x02;
+				NBFi_Send(tmpbuf, 2);
+			}
+			else
+			{
+				for (uint8_t i = 0; i < 8; i++)
+					tmpbuf[i] = data[i];
+				if (_rfl)
+					_rfl(addr32, len, 0, &tmpbuf[8], data[1]);
+				NBFi_Send(tmpbuf, len + 8);
+			}
+			break;
+		case RFL_CMD_WRITE_HEX_INDEX:
+			bigendian_cpy((uint8_t *)&data[2], (uint8_t *)&addr32, 4);
+			bigendian_cpy((uint8_t *)&data[6], (uint8_t *)&len, 2);
+			bigendian_cpy((uint8_t *)&data[8], (uint8_t *)&index, 2);
+			if (_rfl)
+				ret = _rfl(addr32, len, index, &data[10], data[1]);
+			if (ret >= 0)
+			{
+				memcpy(tmpbuf, data, 2);
+				bigendian_cpy((uint8_t *) &ret, &tmpbuf[2], 4);
+				NBFi_Send(tmpbuf, 6);
+			}
+			break;
+		case RFL_CMD_GET_CRC:
+			if (length != 10)
+				break;
+			bigendian_cpy((uint8_t *)&data[2], (uint8_t *)&addr32, 4);
+			bigendian_cpy((uint8_t *)&data[6], (uint8_t *)&tmp32, 4);
+			if (_rfl)
+				ret = _rfl(addr32, tmp32, 0, 0, data[1]);
+			memcpy(tmpbuf, data, 2);
+			bigendian_cpy((uint8_t *) &ret, &tmpbuf[2], 4);
+			NBFi_Send(tmpbuf, 6);
+			break;
+		case RFL_CMD_EXEC_PATCH0:
+		case RFL_CMD_EXEC_PATCH1:
+		case RFL_CMD_EXEC_PATCH2:
+			bigendian_cpy((uint8_t *)&data[2], (uint8_t *)&addr32, 4);
+			if (_rfl)
+				ret = _rfl(addr32, 0, 0, 0, data[1]);
+			bigendian_cpy((uint8_t *) &ret, &tmpbuf[2], 4);
+			NBFi_Send(tmpbuf, 6);
+			break;
+		case RFL_CMD_CLEAR_INDEX:
+		case RFL_CMD_CHECK_UPDATE:
+		case RFL_CMD_CLEAR_CACHE:
+		case RFL_CMD_CPY_ACTUAL:
+		case RFL_CMD_SOFT_RESET:
+		case RFL_CMD_MASS_ERASE:
+		case RFL_CMD_GET_INDEX:
+		case RFL_CMD_GET_VERSION:
 		default:
-			return_code = HAL_ERROR;
-			responce_buffer[1] = WVT_W7_ERROR_CODE_INVALID_TYPE;
-			responce_length = 2;
+			if (_rfl)
+				ret = _rfl(0, 0, 0, 0, data[1]);
+			memcpy(tmpbuf, data, 2);
+			bigendian_cpy((uint8_t *) &ret, &tmpbuf[2], 4);
+			NBFi_Send(tmpbuf, 6);
 			break;
 		}
-	}
-	else
-	{
+	case WVT_W7_PACKET_TYPE_CONTROL:
+		if (length != 7)
+			break;
+		bigendian_cpy((uint8_t *)&data[1], (uint8_t *)&cmd, 2);
+		bigendian_cpy((uint8_t *)&data[3], (uint8_t *)&tmp32, 4);
+
+		switch (cmd)
+		{
+		case CTRL_SETFASTDL:
+			Water7fastdl_on();
+			memcpy(tmpbuf, data, length);
+			NBFi_Send(tmpbuf, length);
+			break;
+		case CTRL_RESETFASTDL:
+			wtimer0_remove(&water7fastdl_off_desc);
+			Water7fastdl_off(0);
+			memcpy(tmpbuf, data, length);
+			NBFi_Send(tmpbuf, length);
+			break;
+		case CTRL_RESET:
+			if (_rfl)
+				_rfl(0, 0, 0, 0, RFL_CMD_SOFT_RESET);
+			memcpy(tmpbuf, data, length);
+			NBFi_Send(tmpbuf, length);
+			break;
+		case CTRL_SAVE:
+			if (_save_data)
+				_save_data((uint8_t *)_state.parameters_array);
+			memcpy(tmpbuf, data, length);
+			NBFi_Send(tmpbuf, length);
+			break;
+		default:
+			tmpbuf[0] = data[0];
+			tmpbuf[1] = (uint8_t)CTRL_NOCTRL;
+			tmpbuf[2] = (uint8_t)CTRL_NOCTRL;
+			tmpbuf[3] = tmpbuf[4] = 0;
+			tmpbuf[5] = data[3];
+			tmpbuf[6] = data[4];
+			NBFi_Send(tmpbuf, length);
+			break;
+		}
+		break;
+	default:
 		return_code = HAL_ERROR;
-		responce_buffer[1] = WVT_W7_ERROR_CODE_INVALID_LENGTH;
-		responce_length = 2;
+		responce_buffer[1] = WVT_W7_ERROR_CODE_INVALID_TYPE;
+		responce_length = WVT_W7_ERROR_RESPONCE_LENGTH;
+		break;
 	}
 	
-	if (return_code == HAL_OK)
+	if (return_code == WVT_W7_ERROR_CODE_OK)
 	{
 		responce_buffer[0] = packet_type;
 		return responce_length;
@@ -116,7 +283,8 @@ inline uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
 	else
 	{
 		responce_buffer[0] = (packet_type + WVT_W7_ERROR_FLAG);
-		return responce_length;
+		responce_buffer[1] = return_code;
+		return WVT_W7_ERROR_RESPONCE_LENGTH;
 	}
 }
 
@@ -130,10 +298,10 @@ inline uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
  * @returns	- HAL_OK		Parameter successefully written to ROM
  * 			- HAL_ERROR		Error. See 2nd byte in NB-Fi packet.
  */
-HAL_StatusTypeDef WVT_W7_Single_Parameter(WVT_W7_Single_Parameter_t parameter, 
+WVT_W7_Error_t WVT_W7_Single_Parameter(
+	uint16_t parameter_addres,
 	WVT_W7_Parameter_Action_t action,
-	uint8_t * responce_buffer, 
-	uint8_t * responce_length)
+	uint8_t * responce_buffer)
 {
 	if (responce_buffer == NULL)
 	{
@@ -292,42 +460,6 @@ void WVT_Select_NBFi_mode(GPIO_PinState vext)
 	}
 }
 
-void WVT_W7_Per_Second()
-{
-	WVT_Alarms_t alarms = { WVT_W7_SWITCH_NORMAL };
-	uint8_t output_buffer[5];
-	
-	extern RTC_HandleTypeDef wvt_hrtc;
-	RTC_TimeTypeDef sTime = { 0 };
-	RTC_DateTypeDef sDate = { 0 }; 
-	
-	HAL_RTC_GetTime(&wvt_hrtc, &sTime, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&wvt_hrtc, &sDate, RTC_FORMAT_BIN);
-	
-	if (WVT_W7_Perform_Regular(sTime.Hours, sTime.Minutes))
-	{
-		WVT_W7_Send_Regular();
-	}
-	WVT_Alarm_Service(&alarms);
-	
-	if (alarms.ch1_event)
-	{
-		uint8_t output_length = WVT_W7_Uplink_Event(WVT_W7_EVENT_CH1, alarms.ch1_state, output_buffer);
-		NBFi_Send(output_buffer, output_length);
-	}
-	
-	if (alarms.ch2_event)
-	{
-		uint8_t output_length = WVT_W7_Uplink_Event(WVT_W7_EVENT_CH2, alarms.ch2_state, output_buffer);
-		NBFi_Send(output_buffer, output_length);
-	}
-		
-	if (alarms.events)
-	{
-		WVT_W7_Send_Regular();
-	}
-}
-
 uint8_t WVT_W7_Perform_Regular(uint8_t sHours, uint8_t sMinutes)
 {	
 	static uint8_t triggered = 0;
@@ -367,12 +499,12 @@ inline void WVT_W7_Send_Regular()
 	
 	uint8_t output_length = WVT_W7_Send_Normal_Regular(output_buffer);
 	
-	NBFi_Send(output_buffer, output_length);
+	externals_functions.nbfi_send(output_buffer, output_length);
 }	
 
 void WVT_W7_Send_Ext_Info(uint8_t channel)
 {
 	uint8_t SendBuf[8];
 
-	NBFi_Send(SendBuf, 8);
+	externals_functions.nbfi_send(SendBuf, 8);
 }

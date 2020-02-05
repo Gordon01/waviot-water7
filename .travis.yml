@@ -1,10 +1,28 @@
+dist: trusty
 language: cpp
-compiler: gcc
-
-os:
-  - windows
-  - linux
-
 compiler:
-  - gcc
-  - clang
+- gcc
+- clang
+os:
+- windows
+- linux
+env:
+  global:
+    secure: 
+
+addons:
+  sonarcloud:
+    organization: "gordon01"
+    token:
+      secure: "tFq9aMEjg/UWvcyLH0QQ9TQbaNj2AxWc3zsQrR5fwEUzgCefAhd8anxnqgVTFQo1qWhsgAhj5Jk+mEuKfNsF4glHklzy9zfypl6MMa9QqAVkU5I6ZQq8uOgGssdK7Yl0nhSOeok7mgI8QILO3iVKDcF1SxpJmzhh8HrQjBznqYnyHLXkBFigGHGMSdnv4VzFEjnXcCJbyhU7D+mXgjlAXa3BiM1eVBSrn4bKU1fSX3CkToTSFYayq50Th/TLaBaB8+DfOfq34rQT1LJsvUXWM9cMbitwFQIDsjzgSMRCrpLU9NT1nb4MSYaNTsbapmMjVfQgO0PLzGhHh/+tTz5rGAr0h1IRdelvQX/gpJ+Fl0RCv1GIWiRsfDtlyPIgt9SR46CDQtPWI+8TH82yL+9KBLb0szfgnGxRBhQVw5tsDXaF72hcm5vdyq+x3us9jklqU81A0/oZI13IPdlknJkTXBGPx9qZMZNu+ZlouNYiKvVmWQC8IfOBDoEqRbH+D/vITyXNjWbZ6SjGK3Th1fV21u9b9dC2gYwPC2oa6M0/bRWJAhtksKnaxYumvXOwaYmSBgtiUkpA8lEnQToXaeGKR7jm4A66HiRSC6QTH5Yyj7rXWHsvmEWfWoIvM17QWE3bqa3Je/vQyFip0fkKdsyOy3ruBOLI9MPhr6GyGeujSRg="
+
+script:
+  - make clean
+  # Wraps the compilation with the Build Wrapper to generate configuration (used
+  # later by the SonarQube Scanner) into the "bw-output" folder
+  - build-wrapper-linux-x86-64 --out-dir bw-output make all
+  # Execute some tests
+  - make test
+  # And finally run the SonarQube analysis - read the "sonar-project.properties"
+  # file to see the specific configuration
+  - sonar-scanner

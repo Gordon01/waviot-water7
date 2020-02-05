@@ -11,20 +11,24 @@
  * - Использование WVT_ROM_Save_Parameter() с аргументом-именованной константой не допускается	
  */
 
-const WVT_W7_Parameter_t parameter = WVT_W7_IN_CMD_ADDITIONAL_PARAMETERS;
+const WVT_W7_Parameter_t additional_parameters = WVT_W7_IN_CMD_ADDITIONAL_PARAMETERS;
+const WVT_W7_Parameter_t message_frequency = WVT_W7_IN_CMD_MESSAGE_FREQUENCY;
 
 TEST_GROUP(WATER7)
 {
-	int32_t saved_value;
+	int32_t saved_additional_parameters;
+	int32_t saved_message_frequency;
 	
     void setup()
     {
-	    WVT_ROM_Read_Parameter(parameter, &saved_value);
+	    WVT_ROM_Read_Parameter(additional_parameters, &saved_additional_parameters);
+	    WVT_ROM_Read_Parameter(message_frequency, &saved_message_frequency);
     }
     
     void teardown()
     {
-	    WVT_ROM_Save_Parameter(parameter, saved_value);
+	    WVT_ROM_Save_Parameter(additional_parameters, saved_additional_parameters);
+	    WVT_ROM_Save_Parameter(message_frequency, saved_message_frequency);
     }
 	
 	void TestSetup(TestInstance *)
@@ -38,37 +42,30 @@ TEST_GROUP(WATER7)
 	}
 };
 
-TEST(WATER7, BoudariesCheck)
+TEST(WATER7, NormalRead)
 {
-	uint8_t ret_comparison;
-	const int16_t min_value_param = 6000;
-	const int16_t max_value_param = 18000;
-
-	ret_comparison = WVT_W7_Check_Current_Range(4000, min_value_param , max_value_param);
-	CHECK_EQUAL(1, ret_comparison);
-	ret_comparison = WVT_W7_Check_Current_Range(20000, min_value_param, max_value_param);
-	CHECK_EQUAL(2, ret_comparison);
-	ret_comparison = WVT_W7_Check_Current_Range(10000, min_value_param, max_value_param);
-	CHECK_EQUAL(0, ret_comparison);
+	uint8_t responce_buffer[8];
+	uint8_t responce_length;
+	uint8_t input_data[3] = { WVT_W7_PACKET_TYPE_READ_SINGLE, 0, WVT_W7_IN_CMD_RESETS_NUMBER };
+	
+	responce_length = WVT_W7_Parse(input_data, 3, responce_buffer);
+	
+	CHECK_EQUAL(7, responce_length);
+	MEMCMP_EQUAL(input_data, responce_buffer, 3);
 }
 
-TEST(WATER7, BoundaryEvent)
+TEST(WATER7, IllegalRead)
 {
-	WVT_W7_Value_State_Event_t ret_event;
-	uint32_t control_mask = 1 + 2;  	// Обе проверки
-	const uint8_t previous_range = 0;
-	const uint8_t alarm_range = 1;
+	uint8_t responce_buffer[8];
+	uint8_t responce_length;
+	uint8_t input_data[3] = { WVT_W7_PACKET_TYPE_READ_SINGLE, 0xFD, 0xE4 };
+	uint8_t output_data[2] = { (WVT_W7_PACKET_TYPE_READ_SINGLE | WVT_W7_ERROR_FLAG), 
+		WVT_W7_ERROR_CODE_INVALID_ADDRESS};
 	
-	ret_event = WVT_W7_Pick_Boundary_Event(1, previous_range, control_mask);
-	CHECK_EQUAL(WVT_W7_VALUE_BECAME_LOWER, ret_event);
-	ret_event = WVT_W7_Pick_Boundary_Event(2, previous_range, control_mask);
-	CHECK_EQUAL(WVT_W7_VALUE_BECAME_HIGHER, ret_event);
-	ret_event = WVT_W7_Pick_Boundary_Event(0, previous_range, control_mask);
-	CHECK_EQUAL(WVT_W7_VALUE_NO_CHANGE, ret_event);
-	ret_event = WVT_W7_Pick_Boundary_Event(0, alarm_range, control_mask);
-	CHECK_EQUAL(WVT_W7_VALUE_RETURNED_TO_NORMAL, ret_event);
-	ret_event = WVT_W7_Pick_Boundary_Event(0, alarm_range, 0);
-	CHECK_EQUAL(WVT_W7_VALUE_NO_CHANGE, ret_event);
+	responce_length = WVT_W7_Parse(input_data, 3, responce_buffer);
+	
+	CHECK_EQUAL(2, responce_length);
+	MEMCMP_EQUAL(output_data, responce_buffer, 2);
 }
 
 TEST(WATER7, AdditionalParameters)
@@ -80,16 +77,67 @@ TEST(WATER7, AdditionalParameters)
 	uint8_t read_parameters[5];
 	uint8_t read_num_of_parameters;
 	
-	WVT_ROM_Save_Parameter(parameter, no_additional_parameters);
+	WVT_ROM_Save_Parameter(additional_parameters, no_additional_parameters);
 	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
 	CHECK_EQUAL(0, read_num_of_parameters);
 	
-	WVT_ROM_Save_Parameter(parameter, one_additional_parameters);
+	WVT_ROM_Save_Parameter(additional_parameters, one_additional_parameters);
 	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
 	CHECK_EQUAL(1, read_num_of_parameters);
 	
-	WVT_ROM_Save_Parameter(parameter, five_additional_parameters);
+	WVT_ROM_Save_Parameter(additional_parameters, five_additional_parameters);
 	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
 	CHECK_EQUAL(5, read_num_of_parameters);
 	MEMCMP_EQUAL(five_parameters, read_parameters, 5);
+}
+
+static uint32_t CheckTriggerCount()
+{
+	uint32_t trigger_count = 0;
+	
+	for (int hour = 0; hour < 24; hour++)
+	{
+		for (int minute = 0; minute < 120; minute++)
+		{
+			if (WVT_W7_Perform_Regular(hour, (minute / 2)))
+			{
+				trigger_count++;
+			}	
+		}
+	}
+	
+	return trigger_count;
+}
+
+TEST(WATER7, MessageFrequencyEveryHour)
+{
+	const int32_t every_hour = 24;
+	uint8_t result;
+	
+	WVT_ROM_Save_Parameter(message_frequency, every_hour);
+	uint32_t trigger_count = CheckTriggerCount();
+
+	CHECK_EQUAL(every_hour, trigger_count);
+}
+
+
+TEST(WATER7, MessageFrequencyTwiceADay)
+{
+	const int32_t twice_a_day = 2;
+	
+	WVT_ROM_Save_Parameter(message_frequency, twice_a_day);
+	uint32_t trigger_count = CheckTriggerCount();
+
+	CHECK_EQUAL(twice_a_day, trigger_count);
+}
+
+TEST(WATER7, MessageFrequencyTwiceAHour)
+{
+	const int32_t twice_a_hour = 48;
+	uint8_t result;
+	
+	WVT_ROM_Save_Parameter(message_frequency, twice_a_hour);
+	uint32_t trigger_count = CheckTriggerCount();
+
+	CHECK_EQUAL(twice_a_hour, trigger_count);
 }
