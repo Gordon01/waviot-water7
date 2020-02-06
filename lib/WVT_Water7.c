@@ -1,6 +1,6 @@
 ﻿#include "WVT_Water7.h"
 
-WVT_W7_Callbacks_t externals_functions = { 0 };
+WVT_W7_Callbacks_t externals_functions = { 0, 0, 0, 0, 0 };
 
 WVT_W7_Error_t WVT_W7_Single_Parameter(
     uint16_t parameter_addres,
@@ -341,21 +341,25 @@ static void WVT_W7_Additional_Parameter(uint16_t address, uint8_t * data)
  *              к регулярному сообщению
  *
  * @param [out]	responce_buffer		    Указатель на буфер с выходными данными
+ * @param 	   	schedule		        Периодичность отправки регулярного сообщения (упакованный формат)
  * @param 	   	payload		            Адрес параметра
  * @param       additional_parameters   Упакованное значение настройки (из EEPROM)
  *                                      Значение 0 отключит отправку дополнительных параметров
  * 
  * @returns	    Число записанных байт
  */
-uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer, int32_t payload, int32_t additional_parameters)
+uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
+	uint16_t schedule, 
+	int32_t payload,
+	int32_t additional_parameters)
 {
     uint8_t parameters[5];
 	uint8_t number_of_additional_params = WVT_W7_Parse_Additional_Parameters(parameters, 
 		additional_parameters);
     
     responce_buffer[0] = (WVT_W7_REGULAR_MESSAGE_FLAG);
-    responce_buffer[1] = 0;	// FIXME
-    responce_buffer[2] = 0;
+	responce_buffer[1] = (schedule >> 8);
+    responce_buffer[2] = schedule;
     
 	responce_buffer[3] = (payload >> 24);
 	responce_buffer[4] = (payload >> 16);
