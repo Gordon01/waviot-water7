@@ -130,10 +130,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (master_doc, 'water7_lib.tex', u'Waviot Water7 library Documentation',
-     u'Alexander Sergeev', 'manual'),
-]
+latex_documents = []
 
 
 # -- Options for manual page output ------------------------------------------
