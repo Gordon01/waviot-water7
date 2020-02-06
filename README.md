@@ -10,3 +10,5 @@ Application-level protocol
 # Documentation
 
 [Knowlege base](https://waviot.makekb.com/entry/8/)
+
+[Read the Docs](https://waviot-water7.readthedocs.io/)
