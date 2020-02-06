@@ -103,7 +103,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_water7_lib_OBJECTS = main.$(OBJEXT) lib/WVT_Water7.$(OBJEXT)
+am_water7_lib_OBJECTS = main.$(OBJEXT) lib/WVT_Water7.$(OBJEXT) \
+	tests/UT_Water7.$(OBJEXT)
 water7_lib_OBJECTS = $(am_water7_lib_OBJECTS)
 water7_lib_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_$(V))
@@ -288,8 +289,9 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
+AM_CXXFLAGS = -std=c++14 -Wall -Wextra -Werror
 AM_CFLAGS = -std=c99 -Wall -Wextra -Werror
-water7_lib_SOURCES = main.c lib/WVT_Water7.cpp
+water7_lib_SOURCES = main.c lib/WVT_Water7.c tests/UT_Water7.cpp
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -393,6 +395,14 @@ lib/$(DEPDIR)/$(am__dirstamp):
 	@: > lib/$(DEPDIR)/$(am__dirstamp)
 lib/WVT_Water7.$(OBJEXT): lib/$(am__dirstamp) \
 	lib/$(DEPDIR)/$(am__dirstamp)
+tests/$(am__dirstamp):
+	@$(MKDIR_P) tests
+	@: > tests/$(am__dirstamp)
+tests/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tests/$(DEPDIR)
+	@: > tests/$(DEPDIR)/$(am__dirstamp)
+tests/UT_Water7.$(OBJEXT): tests/$(am__dirstamp) \
+	tests/$(DEPDIR)/$(am__dirstamp)
 
 water7_lib$(EXEEXT): $(water7_lib_OBJECTS) $(water7_lib_DEPENDENCIES) $(EXTRA_water7_lib_DEPENDENCIES) 
 	@rm -f water7_lib$(EXEEXT)
@@ -401,12 +411,14 @@ water7_lib$(EXEEXT): $(water7_lib_OBJECTS) $(water7_lib_DEPENDENCIES) $(EXTRA_wa
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f lib/*.$(OBJEXT)
+	-rm -f tests/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
 include ./$(DEPDIR)/main.Po
 include lib/$(DEPDIR)/WVT_Water7.Po
+include tests/$(DEPDIR)/UT_Water7.Po
 
 .c.o:
 	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -697,6 +709,8 @@ distclean-generic:
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
 	-rm -f lib/$(DEPDIR)/$(am__dirstamp)
 	-rm -f lib/$(am__dirstamp)
+	-rm -f tests/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tests/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -707,7 +721,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf ./$(DEPDIR) lib/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) lib/$(DEPDIR) tests/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
@@ -755,7 +769,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf ./$(DEPDIR) lib/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) lib/$(DEPDIR) tests/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

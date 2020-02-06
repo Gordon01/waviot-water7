@@ -1,8 +1,9 @@
-﻿#include <TinyEmbeddedTest.h>
-#include <stdint.h>
+﻿#ifdef SYSPROGS_TEST_PLATFORM_EMBEDDED
+#include <TinyEmbeddedTest.h>
+#endif
 
-#include "WVT_Water7.h"
-#include "WVT_EEPROM.h"
+#include <stdint.h>
+#include "lib/WVT_Water7.h"
 
 /* Правило для используемых в тесте параметров, значение которых изменяется
  * во время его работы:
@@ -21,14 +22,12 @@ TEST_GROUP(WATER7)
 	
     void setup()
     {
-	    WVT_ROM_Read_Parameter(additional_parameters, &saved_additional_parameters);
-	    WVT_ROM_Read_Parameter(message_frequency, &saved_message_frequency);
+	    asm("nop");
     }
     
     void teardown()
     {
-	    WVT_ROM_Save_Parameter(additional_parameters, saved_additional_parameters);
-	    WVT_ROM_Save_Parameter(message_frequency, saved_message_frequency);
+	    asm("nop");
     }
 	
 	void TestSetup(TestInstance *)
@@ -77,67 +76,13 @@ TEST(WATER7, AdditionalParameters)
 	uint8_t read_parameters[5];
 	uint8_t read_num_of_parameters;
 	
-	WVT_ROM_Save_Parameter(additional_parameters, no_additional_parameters);
-	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
+	read_num_of_parameters = WVT_W7_Parse_Additional_Parameters(read_parameters, no_additional_parameters);
 	CHECK_EQUAL(0, read_num_of_parameters);
 	
-	WVT_ROM_Save_Parameter(additional_parameters, one_additional_parameters);
-	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
+	read_num_of_parameters = WVT_W7_Parse_Additional_Parameters(read_parameters, one_additional_parameters);
 	CHECK_EQUAL(1, read_num_of_parameters);
 	
-	WVT_ROM_Save_Parameter(additional_parameters, five_additional_parameters);
-	read_num_of_parameters = WVT_W7_Get_Additional_Parameters(read_parameters);
+	read_num_of_parameters = WVT_W7_Parse_Additional_Parameters(read_parameters, five_additional_parameters);
 	CHECK_EQUAL(5, read_num_of_parameters);
 	MEMCMP_EQUAL(five_parameters, read_parameters, 5);
-}
-
-static uint32_t CheckTriggerCount()
-{
-	uint32_t trigger_count = 0;
-	
-	for (int hour = 0; hour < 24; hour++)
-	{
-		for (int minute = 0; minute < 120; minute++)
-		{
-			if (WVT_W7_Perform_Regular(hour, (minute / 2)))
-			{
-				trigger_count++;
-			}	
-		}
-	}
-	
-	return trigger_count;
-}
-
-TEST(WATER7, MessageFrequencyEveryHour)
-{
-	const int32_t every_hour = 24;
-	uint8_t result;
-	
-	WVT_ROM_Save_Parameter(message_frequency, every_hour);
-	uint32_t trigger_count = CheckTriggerCount();
-
-	CHECK_EQUAL(every_hour, trigger_count);
-}
-
-
-TEST(WATER7, MessageFrequencyTwiceADay)
-{
-	const int32_t twice_a_day = 2;
-	
-	WVT_ROM_Save_Parameter(message_frequency, twice_a_day);
-	uint32_t trigger_count = CheckTriggerCount();
-
-	CHECK_EQUAL(twice_a_day, trigger_count);
-}
-
-TEST(WATER7, MessageFrequencyTwiceAHour)
-{
-	const int32_t twice_a_hour = 48;
-	uint8_t result;
-	
-	WVT_ROM_Save_Parameter(message_frequency, twice_a_hour);
-	uint32_t trigger_count = CheckTriggerCount();
-
-	CHECK_EQUAL(twice_a_hour, trigger_count);
 }
