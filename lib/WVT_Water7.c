@@ -6,7 +6,6 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
     uint16_t parameter_addres,
 	WVT_W7_Parameter_Action_t action,
 	uint8_t * responce_buffer);
-static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer);
 
 /**
  * @brief	Отправляет стартовый пакет, указывающий на начало работы устройства
@@ -21,6 +20,16 @@ void WVT_W7_Start(int32_t resets)
     
 	output_length = WVT_W7_Event(WVT_W7_EVENT_RESET, resets, output_buffer);
     externals_functions.nbfi_send(output_buffer, output_length);
+}
+
+/**
+ * @brief	Регистрирует функции, используемые библиотекой для работы с физическими интерфейсами
+ *
+ * @param   callbacks		   	Структура с адресами функций
+ */
+void WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks)
+{
+	externals_functions = callbacks;
 }
 
 /**
@@ -52,7 +61,7 @@ void WVT_Radio_Callback(uint8_t * data, uint16_t length)
  *
  * @returns	Число зачисанных байт в буфер с выходными данными.
  */
-static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
+uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
 {
     WVT_W7_Error_t return_code = WVT_W7_ERROR_CODE_OK;
     uint16_t responce_length;
@@ -119,7 +128,7 @@ static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
 		    {
 			    return_code = WVT_W7_Single_Parameter((addres + current_parameter),
 				    WVT_W7_PARAMETER_WRITE, 
-				    (responce_buffer + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
+				    (data + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
 			    current_parameter++;
 		    }
 		    // Не опечатка
@@ -166,7 +175,7 @@ static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
 	        
 		    return_code = WVT_W7_Single_Parameter(addres, 
 			    WVT_W7_PARAMETER_WRITE,
-			    (responce_buffer + WVT_W7_SINGLE_DATA_OFFSET));
+			    (data + WVT_W7_SINGLE_DATA_OFFSET));
 		    responce_length = WVT_W7_WRITE_SINGLE_LENGTH;
 	    }
 	    else
@@ -236,7 +245,7 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
 	    return WVT_W7_ERROR_CODE_INVALID_ADDRESS;
     }
     
-	WVT_W7_Error_t rom_operation_result;
+	WVT_W7_Error_t rom_operation_result = WVT_W7_ERROR_CODE_OK;
     int32_t value;
     
     switch (action)
@@ -293,10 +302,9 @@ uint8_t WVT_W7_Event(uint16_t event, uint16_t payload, uint8_t * responce_buffer
  *
  * @returns	    Число обнаруженных параметров
  */
-static uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting)
+uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting)
 {
     uint8_t parameter_number = 0;
-    uint8_t current_parameter;
     const uint8_t parameter_mask = 0b00111111;
 
     while (setting & parameter_mask)
