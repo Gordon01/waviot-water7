@@ -119,7 +119,7 @@ static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
 		    {
 			    return_code = WVT_W7_Single_Parameter((addres + current_parameter),
 				    WVT_W7_PARAMETER_WRITE, 
-				    (responce_buffer + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
+				    (data + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
 			    current_parameter++;
 		    }
 		    // Не опечатка
@@ -166,7 +166,7 @@ static uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_
 	        
 		    return_code = WVT_W7_Single_Parameter(addres, 
 			    WVT_W7_PARAMETER_WRITE,
-			    (responce_buffer + WVT_W7_SINGLE_DATA_OFFSET));
+			    (data + WVT_W7_SINGLE_DATA_OFFSET));
 		    responce_length = WVT_W7_WRITE_SINGLE_LENGTH;
 	    }
 	    else
@@ -296,7 +296,6 @@ uint8_t WVT_W7_Event(uint16_t event, uint16_t payload, uint8_t * responce_buffer
 static uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting)
 {
     uint8_t parameter_number = 0;
-    uint8_t current_parameter;
     const uint8_t parameter_mask = 0b00111111;
 
     while (setting & parameter_mask)
