@@ -12,8 +12,8 @@
  * - Использование WVT_ROM_Save_Parameter() с аргументом-именованной константой не допускается	
  */
 
-const WVT_W7_Parameter_t additional_parameters = WVT_W7_IN_CMD_ADDITIONAL_PARAMETERS;
-const WVT_W7_Parameter_t message_frequency = WVT_W7_IN_CMD_MESSAGE_FREQUENCY;
+const uint16_t additional_parameters = WVT_W7_IN_CMD_ADDITIONAL_PARAMETERS;
+const uint16_t message_frequency = WVT_W7_IN_CMD_MESSAGE_FREQUENCY;
 
 TEST_GROUP(WATER7)
 {

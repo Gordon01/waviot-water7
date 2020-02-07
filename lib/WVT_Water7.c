@@ -1,25 +1,24 @@
 ﻿#include "WVT_Water7.h"
 
-WVT_W7_Callbacks_t externals_functions = { 0, 0, 0, 0, 0 };
+WVT_W7_Callbacks_t externals_functions = { 0, 0, 0, 0 };
 
 WVT_W7_Error_t WVT_W7_Single_Parameter(
     uint16_t parameter_addres,
-	WVT_W7_Parameter_Action_t action,
-	uint8_t * responce_buffer);
+    WVT_W7_Parameter_Action_t action,
+    uint8_t * responce_buffer);
 
 /**
- * @brief	Отправляет стартовый пакет, указывающий на начало работы устройства
+ * @brief	Формирует стартовый пакет, указывающий на начало работы устройства
  *			после включения питания или перезагрузки
  *
- * @param   resets		   	Число перезагрузок устройства
+ * @param   resets		   	            Указатель на буфер с выходными данными
+ * @param   [out] responce_buffer	  	Число перезагрузок устройства
+ * 
+ * @returns	Число зачисанных байт в буфер с выходными данными.
  */
-void WVT_W7_Start(int32_t resets)
+uint8_t WVT_W7_Start(int32_t resets, uint8_t * responce_buffer)
 {
-    uint8_t output_buffer[8];
-    uint8_t output_length;
-    
-	output_length = WVT_W7_Event(WVT_W7_EVENT_RESET, resets, output_buffer);
-    externals_functions.nbfi_send(output_buffer, output_length);
+    return WVT_W7_Event(WVT_W7_EVENT_RESET, resets, responce_buffer);
 }
 
 /**
@@ -29,27 +28,7 @@ void WVT_W7_Start(int32_t resets)
  */
 void WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks)
 {
-	externals_functions = callbacks;
-}
-
-/**
- * @brief	Обрабатывает входящий пакет и отсылает ответ в случае необходимости
- *			Должна вызываться при приеме downlink-пакета. 
- *						
- *
- * @param [in] 	data		   	Указатель на буфер с выходными данными.
- * @param 	   	length		   	Чило байт во входном буфере.
- */
-void WVT_Radio_Callback(uint8_t * data, uint16_t length)
-{
-    uint8_t responce_buffer[WVT_W7_CALLBACK_BUF_SIZE];
-    
-    uint8_t responce_length = WVT_W7_Parse(data, length, responce_buffer);
-    
-    if (responce_length)
-    {
-        externals_functions.nbfi_send(responce_buffer, responce_length);
-    }
+    externals_functions = callbacks;
 }
 
 /**
@@ -82,12 +61,12 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         addres = (data[1] << 8) + data[2];
         number_of_parameters = (data[3] << 8) + data[4];
         
-	    if (    (length == WVT_W7_READ_MULTIPLE_LENGTH)
-            &&  ((WVT_W7_MULTI_DATA_OFFSET + (number_of_parameters * WVT_W7_PARAMETER_WIDTH)) <= WVT_W7_CALLBACK_BUF_SIZE) 
+        if (     (length == WVT_W7_READ_MULTIPLE_LENGTH)
+            &&  ((WVT_W7_MULTI_DATA_OFFSET + (number_of_parameters * WVT_W7_PARAMETER_WIDTH)) <= WVT_W7_BUFFER_SIZE) 
             &&	((addres + number_of_parameters) <= WVT_W7_PAR_LENGTH)	)
         {
             // Тип сообщения, адрес начала последовательности и длинна последовательности
-	        // заполняются из входящего пакета
+            // заполняются из входящего пакета
             for (uint8_t i = 0 ; i < WVT_W7_MULTI_DATA_OFFSET ; i++)
             {
                 responce_buffer[i] = data[i];
@@ -98,10 +77,10 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
                 &&	(current_parameter <= number_of_parameters)	)
             {
                 return_code = WVT_W7_Single_Parameter((addres + current_parameter), WVT_W7_PARAMETER_READ, 
-		            (responce_buffer + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
+                    (responce_buffer + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
                 current_parameter++;
             }
-	        responce_length = WVT_W7_READ_MULTIPLE_LENGTH + (number_of_parameters * WVT_W7_PARAMETER_WIDTH);
+            responce_length = WVT_W7_READ_MULTIPLE_LENGTH + (number_of_parameters * WVT_W7_PARAMETER_WIDTH);
         }
         else
         {
@@ -109,52 +88,52 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         }
         break;
     case WVT_W7_PACKET_TYPE_WRITE_MULTIPLE:
-	    addres = (data[1] << 8) + data[2];
-	    number_of_parameters = (data[3] << 8) + data[4];
+        addres = (data[1] << 8) + data[2];
+        number_of_parameters = (data[3] << 8) + data[4];
         
-	    if (    (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET)) 
-		    &&  (addres + number_of_parameters <= WVT_W7_PAR_LENGTH)   )
-	    {
-		    // Тип сообщения, адрес начала последовательности и длинна последовательности
-			// заполняются из входящего пакета
-			for (uint8_t i = 0 ; i < WVT_W7_MULTI_DATA_OFFSET ; i++)
-		    {
-			    responce_buffer[i] = data[i];
-		    }
+        if (    (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET)) 
+            &&  (addres + number_of_parameters <= WVT_W7_PAR_LENGTH)   )
+        {
+            // Тип сообщения, адрес начала последовательности и длинна последовательности
+            // заполняются из входящего пакета
+            for (uint8_t i = 0 ; i < WVT_W7_MULTI_DATA_OFFSET ; i++)
+            {
+                responce_buffer[i] = data[i];
+            }
             
-		    uint16_t current_parameter = 0;
-		    while (     (return_code == WVT_W7_ERROR_CODE_OK)
-		            &&	(current_parameter <= number_of_parameters) )
-		    {
-			    return_code = WVT_W7_Single_Parameter((addres + current_parameter),
-				    WVT_W7_PARAMETER_WRITE, 
-				    (data + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
-			    current_parameter++;
-		    }
-		    // Не опечатка
-		    responce_length = WVT_W7_READ_MULTIPLE_LENGTH;
-	    }
-	    else
-	    {
-		    return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
-	    }
+            uint16_t current_parameter = 0;
+            while (     (return_code == WVT_W7_ERROR_CODE_OK)
+                    &&	(current_parameter <= number_of_parameters) )
+            {
+                return_code = WVT_W7_Single_Parameter((addres + current_parameter),
+                    WVT_W7_PARAMETER_WRITE, 
+                    (data + WVT_W7_MULTI_DATA_OFFSET + (current_parameter * WVT_W7_PARAMETER_WIDTH)));
+                current_parameter++;
+            }
+            // Не опечатка
+            responce_length = WVT_W7_READ_MULTIPLE_LENGTH;
+        }
+        else
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+        }
         break;
     case WVT_W7_PACKET_TYPE_READ_SINGLE:
         addres = (data[1] << 8) + data[2];
-	    
-	    if (    (length == WVT_W7_READ_SINGLE_LENGTH) 
-		     && (addres < WVT_W7_PAR_LENGTH)    )
+        
+        if (    (length == WVT_W7_READ_SINGLE_LENGTH) 
+             && (addres < WVT_W7_PAR_LENGTH)    )
         {
-	        // Тип сообщения и адрес заполняются из входящего пакета
+            // Тип сообщения и адрес заполняются из входящего пакета
             for(uint8_t i = 0 ; i < WVT_W7_SINGLE_DATA_OFFSET ; i++)
-	        {
-		        responce_buffer[i] = data[i];
-	        }
-	        
-	        return_code = WVT_W7_Single_Parameter(addres, 
-		        WVT_W7_PARAMETER_READ,
-		        (responce_buffer + WVT_W7_SINGLE_DATA_OFFSET));
-	        responce_length = WVT_W7_READ_SINGLE_LENGTH + WVT_W7_PARAMETER_WIDTH;
+            {
+                responce_buffer[i] = data[i];
+            }
+            
+            return_code = WVT_W7_Single_Parameter(addres, 
+                WVT_W7_PARAMETER_READ,
+                (responce_buffer + WVT_W7_SINGLE_DATA_OFFSET));
+            responce_length = WVT_W7_READ_SINGLE_LENGTH + WVT_W7_PARAMETER_WIDTH;
         }
         else
         {
@@ -162,49 +141,49 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         }
         break;
     case WVT_W7_PACKET_TYPE_WRITE_SINGLE:
-	    addres = (data[1] << 8) + data[2];
-	    
-	    if (    (length == WVT_W7_WRITE_SINGLE_LENGTH) 
-		     && (addres < WVT_W7_PAR_LENGTH))
-	    {
-		    // Тип сообщения и адрес заполняются из входящего пакета
-			for(uint8_t i = 0 ; i < WVT_W7_SINGLE_DATA_OFFSET ; i++)
-		    {
-			    responce_buffer[i] = data[i];
-		    }
-	        
-		    return_code = WVT_W7_Single_Parameter(addres, 
-			    WVT_W7_PARAMETER_WRITE,
-			    (data + WVT_W7_SINGLE_DATA_OFFSET));
-		    responce_length = WVT_W7_WRITE_SINGLE_LENGTH;
-	    }
-	    else
-	    {
-		    return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
-	    }
+        addres = (data[1] << 8) + data[2];
+        
+        if (    (length == WVT_W7_WRITE_SINGLE_LENGTH) 
+             && (addres < WVT_W7_PAR_LENGTH))
+        {
+            // Тип сообщения и адрес заполняются из входящего пакета
+            for(uint8_t i = 0 ; i < WVT_W7_SINGLE_DATA_OFFSET ; i++)
+            {
+                responce_buffer[i] = data[i];
+            }
+            
+            return_code = WVT_W7_Single_Parameter(addres, 
+                WVT_W7_PARAMETER_WRITE,
+                (data + WVT_W7_SINGLE_DATA_OFFSET));
+            responce_length = WVT_W7_WRITE_SINGLE_LENGTH;
+        }
+        else
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+        }
         break;
     case WVT_W7_PACKET_TYPE_FW_UPDATE:
-	    if (length < 2)
-	    {
-		    return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
-		    break;
-	    }
-	    
-	    return_code = externals_functions.rfl_handler(data, length, responce_buffer, &responce_length);
+        if (length < 2)
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+            break;
+        }
+        
+        return_code = externals_functions.rfl_handler(data, length, responce_buffer, &responce_length);
        
-	    break;
+        break;
     case WVT_W7_PACKET_TYPE_CONTROL:
         if (length != 7)
-	    {
-		    return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
-		    break;
-	    }
-	    
-	    return_code = externals_functions.rfl_command(data, length, responce_buffer, &responce_length);
-	    
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
+            break;
+        }
+        
+        return_code = externals_functions.rfl_command(data, length, responce_buffer, &responce_length);
+        
         break;
     default:
-	    return_code = WVT_W7_ERROR_CODE_INVALID_TYPE;
+        return_code = WVT_W7_ERROR_CODE_INVALID_TYPE;
         break;
     }
     
@@ -242,17 +221,17 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
 {
     if (responce_buffer == 0)
     {
-	    return WVT_W7_ERROR_CODE_INVALID_ADDRESS;
+        return WVT_W7_ERROR_CODE_INVALID_ADDRESS;
     }
     
-	WVT_W7_Error_t rom_operation_result = WVT_W7_ERROR_CODE_OK;
+    WVT_W7_Error_t rom_operation_result = WVT_W7_ERROR_CODE_OK;
     int32_t value;
     
     switch (action)
     {
     case WVT_W7_PARAMETER_READ:
-	    rom_operation_result = externals_functions.rom_read((WVT_W7_Parameter_t) parameter_addres, &value) ;
-	    if (rom_operation_result == WVT_W7_ERROR_CODE_OK)
+        rom_operation_result = externals_functions.rom_read(parameter_addres, &value) ;
+        if (rom_operation_result == WVT_W7_ERROR_CODE_OK)
         {
             responce_buffer[0] = (value >> 24);
             responce_buffer[1] = (value >> 16);
@@ -265,11 +244,11 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
                 + (responce_buffer[1] << 16)
                 + (responce_buffer[2] << 8) 
                 +  responce_buffer[3];
-	    rom_operation_result = externals_functions.rom_write((WVT_W7_Parameter_t) parameter_addres, value);
+        rom_operation_result = externals_functions.rom_write(parameter_addres, value);
         break;
     }	
     
-	return rom_operation_result;
+    return rom_operation_result;
 }
 
 /**
@@ -326,7 +305,7 @@ uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting
 static void WVT_W7_Additional_Parameter(uint16_t address, uint8_t * data)
 {
     int32_t parameter_value;
-    externals_functions.rom_read((WVT_W7_Parameter_t) address, &parameter_value) ;
+    externals_functions.rom_read(address, &parameter_value) ;
     
     data[0] = address;
     data[1] = (parameter_value >> 24);
@@ -349,28 +328,29 @@ static void WVT_W7_Additional_Parameter(uint16_t address, uint8_t * data)
  * @returns	    Число записанных байт
  */
 uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
-	uint16_t schedule, 
-	int32_t payload,
-	int32_t additional_parameters)
+    uint16_t schedule, 
+    int32_t payload,
+    int32_t additional_parameters)
 {
     uint8_t parameters[5];
-	uint8_t number_of_additional_params = WVT_W7_Parse_Additional_Parameters(parameters, 
-		additional_parameters);
+    uint8_t number_of_additional_params = WVT_W7_Parse_Additional_Parameters(parameters, 
+        additional_parameters);
     
     responce_buffer[0] = (WVT_W7_REGULAR_MESSAGE_FLAG);
-	responce_buffer[1] = (schedule >> 8);
+    responce_buffer[1] = (schedule >> 8);
     responce_buffer[2] = schedule;
     
-	responce_buffer[3] = (payload >> 24);
-	responce_buffer[4] = (payload >> 16);
-	responce_buffer[5] = (payload >> 8);
-	responce_buffer[6] = (payload);
+    responce_buffer[3] = (payload >> 24);
+    responce_buffer[4] = (payload >> 16);
+    responce_buffer[5] = (payload >> 8);
+    responce_buffer[6] = (payload);
     
-	while (number_of_additional_params--)
+    while (number_of_additional_params--)
     {
-	    WVT_W7_Additional_Parameter(parameters[number_of_additional_params], 
-		    ((responce_buffer + 7) + (number_of_additional_params * 5)));
+        WVT_W7_Additional_Parameter(parameters[number_of_additional_params], 
+            ((responce_buffer + 7) + (number_of_additional_params * 5)));
     }
     
     return (7 + (5 * number_of_additional_params));
 }	
+
