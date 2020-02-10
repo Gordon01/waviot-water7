@@ -333,7 +333,7 @@ uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
     int32_t additional_parameters)
 {
     uint8_t parameters[5];
-    uint8_t number_of_additional_params = WVT_W7_Parse_Additional_Parameters(parameters, 
+    const uint8_t number_of_additional_params = WVT_W7_Parse_Additional_Parameters(parameters, 
         additional_parameters);
     
     responce_buffer[0] = (WVT_W7_REGULAR_MESSAGE_FLAG);
@@ -345,12 +345,12 @@ uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
     responce_buffer[5] = (payload >> 8);
     responce_buffer[6] = (payload);
     
-    while (number_of_additional_params--)
+    for (int i = 0; i < number_of_additional_params; i++)
     {
-        WVT_W7_Additional_Parameter(parameters[number_of_additional_params], 
-            ((responce_buffer + 7) + (number_of_additional_params * 5)));
+        WVT_W7_Additional_Parameter(parameters[i], 
+		    ((responce_buffer + 7) + (i * WVT_W7_ADDITIONAL_DATA_WIDTH)));
     }
     
-    return (7 + (5 * number_of_additional_params));
+	return (WVT_W7_ADDITIONAL_DATA_OFFSET + (WVT_W7_ADDITIONAL_DATA_WIDTH * number_of_additional_params));
 }	
 

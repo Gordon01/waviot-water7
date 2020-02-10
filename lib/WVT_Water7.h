@@ -21,6 +21,8 @@
 #define WVT_W7_PARAMETER_WIDTH              4   /*!< Число байт, выделенное под храниние параметра */
 #define WVT_W7_MULTI_DATA_OFFSET            5   /*!< Начало данных в пакетах с несколькими параметрами */
 #define WVT_W7_SINGLE_DATA_OFFSET           3   /*!< Начало данных в пакетах с одним параметром */
+#define WVT_W7_ADDITIONAL_DATA_OFFSET       7   /*!< Начало дополнительных данных в регулярном сообщении */
+#define WVT_W7_ADDITIONAL_DATA_WIDTH        5   /*!< Число байт, выделенно под каждый дополнительный параметр */
 
 typedef enum
 {
