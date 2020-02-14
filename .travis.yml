@@ -1,4 +1,6 @@
 dist: trusty
+env:
+  - CTEST_OUTPUT_ON_FAILURE=1
 language: cpp
 compiler:
 - gcc
@@ -15,11 +17,14 @@ addons:
 script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake ../tests
   # Wraps the compilation with the Build Wrapper to generate configuration (used
   # later by the SonarQube Scanner) into the "bw-output" folder
   - build-wrapper-linux-x86-64 --out-dir ../bw-output make all
   # And finally run the SonarQube analysis - read the "sonar-project.properties"
   # file to see the specific configuration
+  - ./tests 
+  - find CMakeFiles/tests.dir/ -name 'WVT_Water7.c.*' -type f -print -exec mv -f {} .. \;
   - cd ..
+  - gcov lib/WVT_Water7.c --object-file WVT_Water7*gcda --object-file WVT_Water7*gcno
   - sonar-scanner

@@ -1,3 +1,5 @@
 /build
 /docs/doxygen
 /docs/_build
+.vscode/
+/WVT_Water7.c.*
