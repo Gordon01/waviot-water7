@@ -353,4 +353,3 @@ uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
     
 	return (WVT_W7_ADDITIONAL_DATA_OFFSET + (WVT_W7_ADDITIONAL_DATA_WIDTH * number_of_additional_params));
 }	
-
