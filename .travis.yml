@@ -12,7 +12,6 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -y install gcovr
 
-
 addons:
   sonarcloud:
     organization: "gordon01"
@@ -28,6 +27,6 @@ script:
   - build-wrapper-linux-x86-64 --out-dir ../bw-output make all
   # And finally run the SonarQube analysis - read the "sonar-project.properties"
   # file to see the specific configuration
+  - ./tests 
   - cd ..
-  - gcovr -r . --sonarqube
   - sonar-scanner
