@@ -284,7 +284,7 @@ uint8_t WVT_W7_Event(uint16_t event, uint16_t payload, uint8_t * responce_buffer
 uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting)
 {
     uint8_t parameter_number = 0;
-    const uint8_t parameter_mask = 64;
+    const uint8_t parameter_mask = 63;
 
     while (setting & parameter_mask)
     {

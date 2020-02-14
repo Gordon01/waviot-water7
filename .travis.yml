@@ -8,10 +8,6 @@ compiler:
 os:
 - linux
 
-before_install:
-  - sudo apt-get update
-  - sudo apt-get -y install gcovr
-
 addons:
   sonarcloud:
     organization: "gordon01"
@@ -28,5 +24,7 @@ script:
   # And finally run the SonarQube analysis - read the "sonar-project.properties"
   # file to see the specific configuration
   - ./tests 
+  - find CMakeFiles/tests.dir/ -name 'WVT_Water7.c.*' -type f -print -exec mv -f {} .. \;
   - cd ..
+  - gcov lib/WVT_Water7.c --object-file WVT_Water7*gcda --object-file WVT_Water7*gcno
   - sonar-scanner
