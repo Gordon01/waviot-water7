@@ -1,6 +1,6 @@
 ﻿#include "WVT_Water7.h"
 
-WVT_W7_Callbacks_t externals_functions = { 0, 0, 0, 0 };
+WVT_W7_Callbacks_t externals_functions;
 
 WVT_W7_Error_t WVT_W7_Single_Parameter(
     uint16_t parameter_addres,
@@ -18,7 +18,7 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
  */
 uint8_t WVT_W7_Start(int32_t resets, uint8_t * responce_buffer)
 {
-    return WVT_W7_Event(WVT_W7_EVENT_RESET, resets, responce_buffer);
+    return WVT_W7_Event(WVT_W7_EVENT_RESET, (uint16_t) resets, responce_buffer);
 }
 
 /**
@@ -284,7 +284,7 @@ uint8_t WVT_W7_Event(uint16_t event, uint16_t payload, uint8_t * responce_buffer
 uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting)
 {
     uint8_t parameter_number = 0;
-    const uint8_t parameter_mask = 0b00111111;
+    const uint8_t parameter_mask = 64;
 
     while (setting & parameter_mask)
     {
