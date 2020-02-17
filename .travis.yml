@@ -1,9 +1,6 @@
 dist: bionic
 env:
   - CTEST_OUTPUT_ON_FAILURE=1
-compiler:
-- gcc
-- clang
 os:
 - linux
 language: cpp
@@ -28,7 +25,7 @@ matrix:
         - gcov lib/WVT_Water7.c --object-file WVT_Water7*gcda --object-file WVT_Water7*gcno
         - sonar-scanner
 
-    - compiler: gcc
+    - compiler: clang
       script:
         - mkdir build
         - cd build
