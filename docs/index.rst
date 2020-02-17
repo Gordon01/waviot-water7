@@ -1,21 +1,15 @@
-.. BigTiffanyAX_stm documentation master file, created by
-   sphinx-quickstart on Thu Jun 27 10:51:58 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Библиотека Waviot Water7
 ============================================
+
+Библиотека реализует прикладной протокол Water 7, используемый в устройствах Waviot и предназначена для отправки данных с водяных, тепловых и электросчетчиков.
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-.. doxygenindex::
-   :project: water7_lib
-
-Indices and tables
+Начало работы 
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+* :doc:`getting_started`
+* :doc:`doxygen_index`
