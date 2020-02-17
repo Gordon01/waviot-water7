@@ -18,6 +18,11 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
  */
 uint8_t WVT_W7_Start(int32_t resets, uint8_t * responce_buffer)
 {
+    if (resets < 0)
+    {
+        resets = 0;
+    }
+    
     return WVT_W7_Event(WVT_W7_EVENT_RESET, (uint16_t) resets, responce_buffer);
 }
 

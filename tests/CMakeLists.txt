@@ -18,6 +18,6 @@ set(CMAKE_C_FLAGS "-Wall -Wextra -Werror -pedantic -fprofile-arcs -ftest-coverag
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage -g -O0")
 set(LCOV_REMOVE_EXTRA "'test/*'")
 
-add_executable(tests UT_Water7.cpp ../lib/WVT_Water7.c)
+add_executable(tests main.cpp UT_Water7.cpp ../lib/WVT_Water7.c)
 
 set_property(TARGET tests PROPERTY C_STANDARD 99)

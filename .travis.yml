@@ -32,4 +32,3 @@ matrix:
         - cmake ../tests
         - make all
         - ./tests 
-        - cd ..
