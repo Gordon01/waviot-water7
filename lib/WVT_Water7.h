@@ -17,7 +17,6 @@
 #define WVT_W7_WRITE_SINGLE_LENGTH   	   	7UL
 #define WVT_W7_EVENT_LENGTH   	        	7UL
 
-#define WVT_W7_PAR_LENGTH				    320	/*!< parameters array length (must be equal or bigger than sizeof(_AQUA_TAGS_TO_SAVE) / 4 and request length) */
 #define WVT_W7_PARAMETER_WIDTH              4   /*!< Число байт, выделенное под храниние параметра */
 #define WVT_W7_MULTI_DATA_OFFSET            5   /*!< Начало данных в пакетах с несколькими параметрами */
 #define WVT_W7_SINGLE_DATA_OFFSET           3   /*!< Начало данных в пакетах с одним параметром */

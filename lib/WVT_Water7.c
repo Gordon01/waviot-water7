@@ -67,8 +67,7 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         number_of_parameters = (data[3] << 8) + data[4];
         
         if (     (length == WVT_W7_READ_MULTIPLE_LENGTH)
-            &&  ((WVT_W7_MULTI_DATA_OFFSET + (number_of_parameters * WVT_W7_PARAMETER_WIDTH)) <= WVT_W7_BUFFER_SIZE) 
-            &&	((addres + number_of_parameters) <= WVT_W7_PAR_LENGTH)	)
+            &&  ((WVT_W7_MULTI_DATA_OFFSET + (number_of_parameters * WVT_W7_PARAMETER_WIDTH)) <= WVT_W7_BUFFER_SIZE) )
         {
             // Тип сообщения, адрес начала последовательности и длинна последовательности
             // заполняются из входящего пакета
@@ -96,8 +95,7 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         addres = (data[1] << 8) + data[2];
         number_of_parameters = (data[3] << 8) + data[4];
         
-        if (    (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET)) 
-            &&  (addres + number_of_parameters <= WVT_W7_PAR_LENGTH)   )
+        if (    (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET)) )
         {
             // Тип сообщения, адрес начала последовательности и длинна последовательности
             // заполняются из входящего пакета
@@ -126,8 +124,7 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
     case WVT_W7_PACKET_TYPE_READ_SINGLE:
         addres = (data[1] << 8) + data[2];
         
-        if (    (length == WVT_W7_READ_SINGLE_LENGTH) 
-             && (addres < WVT_W7_PAR_LENGTH)    )
+        if (length == WVT_W7_READ_SINGLE_LENGTH) 
         {
             // Тип сообщения и адрес заполняются из входящего пакета
             for(uint8_t i = 0 ; i < WVT_W7_SINGLE_DATA_OFFSET ; i++)
@@ -148,11 +145,10 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
     case WVT_W7_PACKET_TYPE_WRITE_SINGLE:
         addres = (data[1] << 8) + data[2];
         
-        if (    (length == WVT_W7_WRITE_SINGLE_LENGTH) 
-             && (addres < WVT_W7_PAR_LENGTH))
+        if (length == WVT_W7_WRITE_SINGLE_LENGTH) 
         {
             // Тип сообщения и адрес заполняются из входящего пакета
-            for(uint8_t i = 0 ; i < WVT_W7_SINGLE_DATA_OFFSET ; i++)
+            for(uint8_t i = 0 ; i < WVT_W7_WRITE_SINGLE_LENGTH ; i++)
             {
                 responce_buffer[i] = data[i];
             }
@@ -199,7 +195,7 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
     }
     else
     {
-        responce_buffer[0] = (packet_type + WVT_W7_ERROR_FLAG);
+        responce_buffer[0] = (packet_type | WVT_W7_ERROR_FLAG);
         responce_buffer[1] = return_code;
         return WVT_W7_ERROR_RESPONCE_LENGTH;
     }
@@ -232,9 +228,8 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
     WVT_W7_Error_t rom_operation_result = WVT_W7_ERROR_CODE_OK;
     int32_t value;
     
-    switch (action)
+    if (action == WVT_W7_PARAMETER_READ)
     {
-    case WVT_W7_PARAMETER_READ:
         rom_operation_result = externals_functions.rom_read(parameter_addres, &value) ;
         if (rom_operation_result == WVT_W7_ERROR_CODE_OK)
         {
@@ -243,15 +238,15 @@ WVT_W7_Error_t WVT_W7_Single_Parameter(
             responce_buffer[2] = (value >> 8);
             responce_buffer[3] =  value;		
         }
-        break;
-    case WVT_W7_PARAMETER_WRITE:
+    }
+    else
+    {
         value =   (responce_buffer[0] << 24) 
                 + (responce_buffer[1] << 16)
                 + (responce_buffer[2] << 8) 
                 +  responce_buffer[3];
         rom_operation_result = externals_functions.rom_write(parameter_addres, value);
-        break;
-    }	
+    }
     
     return rom_operation_result;
 }
