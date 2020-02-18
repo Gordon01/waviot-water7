@@ -189,7 +189,10 @@ TEST_CASE("Error handling", "[parser]")
     //const uint8_t illegal_function = 0xFE;
 
     // Неверная длинна
-    CHECK(WVT_W7_Parse(read_single, (sizeof(read_single) - 1), read_buffer) == 2);
+    CHECK(WVT_W7_Parse(
+        read_single, 
+        static_cast<uint16_t>((sizeof(read_single) - 1)), 
+        read_buffer) == 2);
     error_packet[0] = (read_single[0] | 0x40);
     error_packet[1] = 0x06;
 	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);

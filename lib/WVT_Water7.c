@@ -95,7 +95,7 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         addres = (data[1] << 8) + data[2];
         number_of_parameters = (data[3] << 8) + data[4];
         
-        if (    (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET)) )
+        if (length == ((number_of_parameters * WVT_W7_PARAMETER_WIDTH) + WVT_W7_MULTI_DATA_OFFSET))
         {
             // Тип сообщения, адрес начала последовательности и длинна последовательности
             // заполняются из входящего пакета
