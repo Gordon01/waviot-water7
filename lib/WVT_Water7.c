@@ -49,9 +49,9 @@ WVT_W7_Status_t WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks)
 /**
  * @brief	Обрабатывает входящий NB-Fi пакет
  *
- * @param [in] 	data		   	Указатель на буфер с выходными данными.
- * @param 	   	length		   	Чило байт во входном буфере.
- * @param [out]	responce_buffer	Указатель на буфер с выходными данными.
+ * @param [in] 	data		   	Указатель на буфер с входными данными
+ * @param 	   	length		   	Чило байт во входном буфере
+ * @param [out]	responce_buffer	Указатель на буфер с выходными данными
  *
  * @returns	Число зачисанных байт в буфер с выходными данными.
  */
