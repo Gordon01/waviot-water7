@@ -30,10 +30,20 @@ uint8_t WVT_W7_Start(int32_t resets, uint8_t * responce_buffer)
  * @brief	Регистрирует функции, используемые библиотекой для работы с физическими интерфейсами
  *
  * @param   callbacks		   	Структура с адресами функций
+ * 
+ * @return  - WVT_W7_OK Регистрация успешна
+ *          - WVT_W7_ERROR Неверные указатели 
  */
-void WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks)
+WVT_W7_Status_t WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks)
 {
-    externals_functions = callbacks;
+    if (    (callbacks.rom_read != 0)
+        &&  (callbacks.rom_write != 0)  )
+    {
+        externals_functions = callbacks;
+        return WVT_W7_OK;
+    }
+
+    return WVT_W7_ERROR;
 }
 
 /**
@@ -164,6 +174,13 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
         }
         break;
     case WVT_W7_PACKET_TYPE_FW_UPDATE:
+        if (    (externals_functions.rfl_handler == 0)
+            ||  (externals_functions.rfl_command == 0)   )
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_TYPE;
+            break;
+        }
+
         if (length < 2)
         {
             return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;
@@ -174,6 +191,13 @@ uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer)
        
         break;
     case WVT_W7_PACKET_TYPE_CONTROL:
+        if (    (externals_functions.rfl_handler == 0)
+            ||  (externals_functions.rfl_command == 0)   )
+        {
+            return_code = WVT_W7_ERROR_CODE_INVALID_TYPE;
+            break;
+        }
+
         if (length != 7)
         {
             return_code = WVT_W7_ERROR_CODE_INVALID_LENGTH;

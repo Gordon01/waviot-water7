@@ -1,0 +1,10 @@
+{
+    "cmake.configureOnOpen": true,
+    "restructuredtext.confPath": "${workspaceFolder}/docs",
+    "files.associations": {
+        "wvt_water7.h": "c"
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/tests",
+    "C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools",
+    "catch2TestExplorer.defaultCwd": "${workspaceFolder}/build",
+}

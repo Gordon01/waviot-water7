@@ -82,7 +82,7 @@ extern "C" {
     
     uint8_t WVT_W7_Start(int32_t resets, uint8_t * responce_buffer);
     void WVT_Radio_Callback(uint8_t * data, uint16_t length);
-    void WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks);
+    WVT_W7_Status_t WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks);
     uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer);
     uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
         uint16_t schedule, 

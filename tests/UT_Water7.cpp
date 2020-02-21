@@ -35,6 +35,11 @@ TEST_CASE("Reset", "[reset]")
 
 WVT_W7_Error_t ext_rom_read(uint16_t address, int32_t * value)
 {
+    if (address == 228)
+    {
+        return WVT_W7_ERROR_CODE_INVALID_ADDRESS;
+    }
+
     *value = static_cast<uint16_t>(address);
     
     return WVT_W7_ERROR_CODE_OK;
@@ -42,7 +47,11 @@ WVT_W7_Error_t ext_rom_read(uint16_t address, int32_t * value)
 
 WVT_W7_Error_t ext_rom_write(uint16_t address, int32_t value)
 {
-    value++;
+    if (value == 228)
+    {
+        return WVT_W7_ERROR_CODE_INVALID_VALUE;
+    }
+
     address++;
     
     return WVT_W7_ERROR_CODE_OK;
@@ -54,8 +63,40 @@ TEST_CASE("Callbacks", "[callbacks]")
 
     callbacks.rom_read = ext_rom_read;
     callbacks.rom_write = ext_rom_write;
+    callbacks.rfl_command = nullptr;
+    callbacks.rfl_handler = nullptr;
 
-    WVT_W7_Register_Callbacks(callbacks);
+    CHECK(WVT_W7_Register_Callbacks(callbacks) == WVT_W7_OK);
+}
+
+TEST_CASE("Unsupported functions", "[callbacks]")
+{
+    uint8_t firmware_packet[3] = {
+    //  тип |
+        0x29, 0xFF, 0xFF
+    };
+    uint8_t error_packet[2] = {
+    //      | 0x01 - функция неподдерживается
+        0x00, 0x01
+    };
+
+    error_packet[0] = (firmware_packet[0] | 0x40);
+    CHECK(WVT_W7_Parse(
+        firmware_packet, 
+        sizeof(firmware_packet), 
+        read_buffer) == sizeof(error_packet));
+
+	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
+
+    firmware_packet[0] = 0x27;
+    error_packet[0] = (firmware_packet[0] | 0x40);
+
+    CHECK(WVT_W7_Parse(
+        firmware_packet, 
+        sizeof(firmware_packet), 
+        read_buffer) == sizeof(error_packet));
+
+	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
 }
 
 TEST_CASE("Event", "[event]")
@@ -182,9 +223,12 @@ TEST_CASE("Normal work", "[parser]")
 
 TEST_CASE("Error handling", "[parser]")
 {
-    uint8_t read_single[3] = { 
+    uint8_t read_single[] = { 
     //  тип | параметр
         0x07, 0x00, 0x00 };
+    uint8_t write_single[] = { 
+    //  тип | параметр
+        0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE4 };
     uint8_t error_packet[2];
     //const uint8_t illegal_function = 0xFE;
 
@@ -195,5 +239,24 @@ TEST_CASE("Error handling", "[parser]")
         read_buffer) == 2);
     error_packet[0] = (read_single[0] | 0x40);
     error_packet[1] = 0x06;
+	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
+
+    read_single[2] = 228;
+
+    // Неверный адрес
+    CHECK(WVT_W7_Parse(
+        read_single, 
+        static_cast<uint16_t>(sizeof(read_single)), 
+        read_buffer) == 2);
+    error_packet[1] = 0x02;
+	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
+
+    // Неверное значение
+    CHECK(WVT_W7_Parse(
+        write_single, 
+        static_cast<uint16_t>(sizeof(write_single)), 
+        read_buffer) == 2);
+    error_packet[0] = (write_single[0] | 0x40);
+    error_packet[1] = 0x03;
 	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
 }
