@@ -377,3 +377,44 @@ uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
     
 	return (WVT_W7_ADDITIONAL_DATA_OFFSET + (WVT_W7_ADDITIONAL_DATA_WIDTH * number_of_additional_params));
 }	
+
+/**
+ * @brief       Рассчитывает, нужно ли сейчас отправлять периодическое сообщение, исходя
+ *              из желаемоего количества отправок в день. Распределяет события равномерно
+ *              в течении дня.
+ *              Если для текущей пары час-минута срабатывает событие, то следующий вызов функции
+ *              с этой же парой не приведет к срабатыванию события. 
+ * 
+ * @param current_hour    Текущий час
+ * @param current_minute  Текущая минута
+ * @param schedule        Желаемое число отправок в день
+ * @return                - 0 нет события
+ *                        - 1 событие 
+ */
+uint8_t WVT_W7_Scheduler(uint8_t current_hour, uint8_t current_minute, int32_t schedule)
+{	
+	static uint8_t triggered = 0;
+	uint8_t ret = 0;
+
+	// Частота отправки равна числу минут в день, деленных на необходимое число сообщений
+	schedule = (24 * 60) / schedule;
+	
+	const uint32_t minutes_since_beginning = (current_hour * 60) + current_minute;
+	
+	const uint8_t time_has_come = (minutes_since_beginning % schedule) == 0;
+	
+	if (time_has_come)
+	{
+		if (triggered == 0)
+		{
+			ret = 1;
+			triggered++;
+		}
+	}
+	else
+	{
+		triggered = 0;
+	}
+	
+	return ret;
+}
