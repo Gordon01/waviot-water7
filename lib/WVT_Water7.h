@@ -84,12 +84,15 @@ extern "C" {
     void WVT_Radio_Callback(uint8_t * data, uint16_t length);
     WVT_W7_Status_t WVT_W7_Register_Callbacks(WVT_W7_Callbacks_t callbacks);
     uint8_t WVT_W7_Parse(uint8_t * data, uint16_t length, uint8_t * responce_buffer);
-    uint8_t WVT_W7_Short_Regular(uint8_t * responce_buffer,
-        uint16_t schedule, 
+    uint8_t WVT_W7_Short_Regular(
+        uint8_t * responce_buffer,
         int32_t payload,
+        uint8_t parameter_number,
+        uint16_t schedule, 
         int32_t additional_parameters);
     uint8_t WVT_W7_Event(uint16_t event, uint16_t payload, uint8_t * responce_buffer);
     uint8_t WVT_W7_Parse_Additional_Parameters(uint8_t * parameters, int32_t setting);
+    uint8_t WVT_W7_Scheduler(uint8_t current_hour, uint8_t current_minute, int32_t schedule);
     
 #ifdef __cplusplus
 }

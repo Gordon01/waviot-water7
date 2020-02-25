@@ -129,13 +129,18 @@ TEST_CASE("Short regular", "[short_regular]")
     //  тип | расписание | значение 4 байта      | адрес доппараметра | его значение 4 байта
         0x80, 0xBE, 0xEF,  0x7A, 0xCE, 0xFE, 0xED, parameter_address,   0x00, 0x00, 0x00, parameter_address };
 
-    CHECK(WVT_W7_Short_Regular(read_buffer, schedule, payload, 0) == packet_length_no_additional);
+    CHECK(WVT_W7_Short_Regular(read_buffer, payload, 0, schedule, 0) == packet_length_no_additional);
 	CHECK(memcmp(short_packet, read_buffer, packet_length_no_additional) == 0);
 
-    CHECK(WVT_W7_Short_Regular(read_buffer, schedule, payload, parameter_address) == packet_length_one_additional);
+    uint8_t parameter_number = 10;
+    short_packet[0] = (parameter_number | 0x80);
+    CHECK(WVT_W7_Short_Regular(read_buffer, payload, parameter_number, schedule, 0) == packet_length_no_additional);
+	CHECK(memcmp(short_packet, read_buffer, packet_length_no_additional) == 0);
+
+    CHECK(WVT_W7_Short_Regular(read_buffer, payload, 0, schedule, parameter_address) == packet_length_one_additional);
 	CHECK(memcmp(short_packet_with_one, read_buffer, packet_length_one_additional) == 0);
 
-    CHECK(WVT_W7_Short_Regular(read_buffer, schedule, payload, five_additional_parameters) == packet_length_five_additional);
+    CHECK(WVT_W7_Short_Regular(read_buffer, payload, 0, schedule, five_additional_parameters) == packet_length_five_additional);
 }
 
 TEST_CASE("Additional parameters", "[additional_parameters]")
@@ -259,4 +264,24 @@ TEST_CASE("Error handling", "[parser]")
     error_packet[0] = (write_single[0] | 0x40);
     error_packet[1] = 0x03;
 	CHECK(memcmp(error_packet, read_buffer, sizeof(error_packet)) == 0);
+}
+
+TEST_CASE("Scheduler", "[scheduler]")
+{
+    auto schedule = GENERATE(1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 96, 120, 144);
+    
+    uint32_t trigger_count = 0;
+	
+	for (uint8_t hour = 0; hour < 24; hour++)
+	{
+		for (uint8_t minute = 0; minute < 120; minute++)
+		{
+			if (WVT_W7_Scheduler(hour, (minute / 2), schedule))
+			{
+				trigger_count++;
+			}	
+		}
+	}
+	
+	CHECK(trigger_count == schedule);
 }
